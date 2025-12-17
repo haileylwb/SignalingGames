@@ -47,6 +47,45 @@ def plot_receiver_signal(receiver, signal=0):
     plt.show()
 
 
+def plot_realized_vs_expected(game, window=500):
+    realized = np.array(game.success_history)
+    expected = np.array(game.expected_payoff_mixed)
+
+    plt.figure()
+    plt.plot(expected, label="Expected payoff")
+    plt.xlabel("Timestep")
+    plt.ylabel("Payoff")
+    plt.title("Expected Payoff Over Time")
+    plt.legend()
+    plt.show()
+
+    if window is not None:
+        rolling_realized = np.convolve(
+            realized, np.ones(window) / window, mode="valid"
+        )
+
+        plt.figure()
+        plt.plot(rolling_realized, label="Realized payoff (rolling)")
+        plt.plot(expected[window - 1:], label="Expected payoff")
+        plt.xlabel("Timestep")
+        plt.ylabel("Payoff")
+        plt.title(f"Realized vs Expected Payoff (window={window})")
+        plt.legend()
+        plt.show()
+
+
+def plot_expected_components(game):
+    plt.figure()
+    plt.plot(game.expected_payoff_signal_only, label="Signal only")
+    plt.plot(game.expected_payoff_state_signal, label="State + signal")
+    plt.plot(game.expected_payoff_mixed, label="Mixed")
+    plt.xlabel("Timestep")
+    plt.ylabel("Expected payoff")
+    plt.title("Expected Payoff Components")
+    plt.legend()
+    plt.show()
+
+
 def plot_receiver_state(receiver, state=0):
     history = np.array(receiver.state_action_history)
 
