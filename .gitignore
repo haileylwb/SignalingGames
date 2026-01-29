@@ -1,0 +1,23 @@
+# VS Code
+.vscode/
+
+# Python cache
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments (just in case)
+.venv/
+venv/
+env/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Optional: Python build artifacts
+build/
+dist/
+*.egg-info/

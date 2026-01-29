@@ -29,36 +29,34 @@ class SignalingGame:
                         )
         return payoff
 
-    def _pooled_receiver_policy(self):
-        n_states = self.receiver.n_states
-        n_signals = self.receiver.n_signals
-        n_actions = self.receiver.n_actions
-
-        pooled = np.zeros((n_states, n_signals, n_actions))
-        for w in range(n_states):
-            for m in range(n_signals):
-                weights = (
-                    self.receiver.state_action_weights[w]
-                    + self.receiver.signal_action_weights[m]
-                )
-                pooled[w, m] = weights / weights.sum()
-        return pooled
+    def _pooled_receiver_policy(self, state, signal):
+        """
+        Compute pooled action probabilities for a specific state-signal pair.
+        Uses ball pooling (BP): sum the weights then normalize.
+        """
+        weights = (self.receiver.state_action_weights[state] + 
+                   self.receiver.signal_action_weights[signal])
+        return weights / weights.sum()
 
     
-    def _expected_payoff_state_signal(self, sender_policy, receiver_state_signal_policy):
+    def _expected_payoff_state_signal(self, sender_policy):
+        """
+        Compute expected payoff when receiver observes both state and signal.
+        Must compute pooled probabilities BEFORE normalizing (ball pooling).
+        """
         n_states, n_signals = sender_policy.shape
-        _, _, n_actions = receiver_state_signal_policy.shape
 
         payoff = 0.0
         for w in range(n_states):
             for m in range(n_signals):
-                for a in range(n_actions):
-                    if a == w:
-                        payoff += (
-                            (1 / n_states)
-                            * sender_policy[w, m]
-                            * receiver_state_signal_policy[w, m, a]
-                        )
+                # Get pooled action probabilities for this state-signal pair
+                pooled_probs = self._pooled_receiver_policy(w, m)
+                
+                # Probability of correct action under pooling
+                p_correct = pooled_probs[w]
+                
+                payoff += (1 / n_states) * sender_policy[w, m] * p_correct
+        
         return payoff
 
 
@@ -79,30 +77,15 @@ class SignalingGame:
         self.receiver.update(signal, action, success, world_state_obs)
 
         # Expected Payoff
-        sender_policy = (
-            self.sender.state_signal_weights
-            / self.sender.state_signal_weights.sum(axis=1, keepdims=True)
-        )
-
-        receiver_signal_policy = (
-            self.receiver.signal_action_weights
-            / self.receiver.signal_action_weights.sum(axis=1, keepdims=True)
-        )
-
-        payoff_signal_only = self._expected_payoff_signal_only(
-            sender_policy, receiver_signal_policy
-        )
-
-        receiver_state_signal_policy = self._pooled_receiver_policy()
-
-        payoff_state_signal = self._expected_payoff_state_signal(
-            sender_policy, receiver_state_signal_policy
-        )
-
-        payoff_mixed = (
-            (1 - self.p_observe_state) * payoff_signal_only
-            + self.p_observe_state * payoff_state_signal
-        )
+        sender_policy = (self.sender.state_signal_weights / 
+                        self.sender.state_signal_weights.sum(axis=1, keepdims=True))
+        receiver_signal_policy = (self.receiver.signal_action_weights / 
+                                 self.receiver.signal_action_weights.sum(axis=1, keepdims=True))
+        
+        payoff_signal_only = self._expected_payoff_signal_only(sender_policy, receiver_signal_policy)
+        payoff_state_signal = self._expected_payoff_state_signal(sender_policy)
+        payoff_mixed = ((1 - self.p_observe_state) * payoff_signal_only + 
+                       self.p_observe_state * payoff_state_signal)
 
         self.expected_payoff_signal_only.append(payoff_signal_only)
         self.expected_payoff_state_signal.append(payoff_state_signal)
